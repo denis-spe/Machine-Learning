@@ -1,0 +1,14 @@
+.main-title, 
+.aside-main-title, 
+.sub-title, h1{
+    color: #6c63ff;
+}
+
+.sub-title{
+    font-size: 20px;
+}
+
+main-title{
+    position: relative;
+    top: 1;
+}
