@@ -3,7 +3,6 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from pages import load_data
-from . import *
 
 def split_datasets(
     datasets: pd.DataFrame,
@@ -21,12 +20,14 @@ def split_datasets(
 def app():
     # Instance a list with tuple of dataset with it's name
     datasets = load_data.all_dataset
-    try:
-        st.markdown("""
-        <h2 class='sub-title'>Data Split</h2>
-        """, unsafe_allow_html=True)
-        if len(datasets) == 1:
-            if "train" in datasets[0][1]:
+    
+    st.markdown("""
+    <h2 class='sub-title'>Data Split</h2>
+    """, unsafe_allow_html=True)
+
+    if len(datasets) != 0:
+        for dataset, name in datasets:
+            if "train" in name:
                 st.markdown(f"<h3 class='sub-title'>{datasets[0][1].capitalize()}</h3>", unsafe_allow_html=True)
                 # Insert the target feature
                 target = st.selectbox("Target(Response) variable(Feature)", options=datasets[0][0].columns)
@@ -42,6 +43,7 @@ def app():
 
                     st.info(f"""
                     Train_X:\n
+            
                     \tRows: {train_X.shape[0]}\n
                     \tColumns:{train_X.shape[1]}\n
                     Valid_X:\n
@@ -53,19 +55,9 @@ def app():
                     \tRows: {valid_y.shape[0]}\n
                     """)
             else:
-                st.write("Inorder to split the data, The **data path name** of the dataset must have a name train in it")
-        else:
-            if "train" in datasets[0][1]:
-                st.markdown(f"<h3 class='sub-title'>{datasets[0][1].capitalize()}</h3>", unsafe_allow_html=True)
-                train_rows_1 = st.number_input("Train split samples(Rows)", min_value=0.0, max_value=1.0, value=.75)
-                valid_rows_1 = st.number_input("Validation split samples(Rows)", min_value=0.0, max_value=1.0, value=.25)
-            elif "train" in datasets[-1][1]:
-                st.markdown(f"<h3 class='sub-title'>{datasets[-1][1].capitalize()}</h3>", unsafe_allow_html=True)
-                train_rows_1 = st.number_input("Train split samples(Rows)", min_value=0.0, max_value=1.0, value=.75)
-                valid_rows_1 = st.number_input("Validation split samples(Rows)", min_value=0.0, max_value=1.0, value=.25)
-            else:
-                st.write("Inorder to split the data, The **data path name** of the dataset must have a name train in it")
-            
-        
-    except IndexError:
+                st.write("""
+                The csv file name must have train in it's name
+                like train.csv or mtcars_train.csv
+        """)
+    else:
         st.write("Go Back To Dataset Load Page")
