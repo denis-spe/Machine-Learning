@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 from my_multipage import Pages
-from pages import data_split, load_data
+from pages import data_cleaning, data_split, load_data
 
 
 # Gathering Data
@@ -27,16 +27,18 @@ def load_css(path):
 load_css("style.css")
 
 
-# Call the analysis page 
-load_data = load_data.load
+# Call pages 
+load_dataset = load_data.load
 data_spliter = data_split.app
+clean_data = data_cleaning.app
 
 # Initialize the Page instance
 app = Pages(navigation_name='Machine learning steps')
 
-# Add pages
-app.add_app("Load Dataset", load_data)
-app.add_app("Data split", data_spliter)
+# Register the pages
+app.add_app("Load Dataset", load_dataset)
+app.add_app("Data Split", data_spliter)
+app.add_app("Data cleaning", clean_data)
 
 app.run()
 

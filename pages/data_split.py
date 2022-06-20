@@ -4,6 +4,9 @@ from sklearn.model_selection import train_test_split
 
 from pages import load_data
 
+# Initial data storage for splited data
+splited_data = []
+
 def split_datasets(
     datasets: pd.DataFrame,
     target: str,
@@ -41,6 +44,12 @@ def app():
                     y = datasets[0][0][target]
                     train_X, valid_X, train_y,  valid_y = train_test_split(X, y, train_size=train_rows, test_size=valid_rows, random_state=random_state)
 
+                    # After Split then add the split data to dictonary(splited_data)
+                    splited_data.append(train_X)
+                    splited_data.append(valid_X)
+                    splited_data.append(train_y)
+                    splited_data.append(valid_y)
+
                     st.info(f"""
                     Train_X:\n
             
@@ -54,6 +63,11 @@ def app():
                     valid_y:\n
                     \tRows: {valid_y.shape[0]}\n
                     """)
+                break
+
+            elif "test" in name:
+                continue
+
             else:
                 st.write("""
                 The csv file name must have train in it's name
