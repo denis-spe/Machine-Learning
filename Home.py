@@ -1,8 +1,12 @@
 # Import libraries
 import streamlit as st
+import numpy as np
 import pandas as pd
 
-
+# Set the page main title
+st.set_page_config(
+    page_title="ML",
+)
 
 # Gathering Data
 # Preparing that data
@@ -15,7 +19,6 @@ import pandas as pd
 st.title("Machine learing")
 st.sidebar.title("Machine learing")
 
-
 # Load Css file
 def load_css(path):
     with open(path, mode='r') as file:
@@ -24,6 +27,7 @@ def load_css(path):
 
 # loading the css file 
 load_css("style.css")
+
 
 # Setting  Screen layout
 asidebar = st.sidebar
