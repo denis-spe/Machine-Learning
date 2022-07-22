@@ -2,6 +2,11 @@ import streamlit as st
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
+# Set the page main title
+st.set_page_config(
+    page_title="ML | Data Spliting",
+)
+
 # Load Css file
 def load_css(path):
     with open(path, mode='r') as file:
@@ -47,7 +52,7 @@ for data_name in st.session_state:
                 test_size=valid_rows, 
                 random_state=random_state,
                 shuffle=shuffle,
-                stratify=stratify
+                stratify=datasets[stratify]
                 )
 
             # Add datasets to the session
@@ -55,6 +60,9 @@ for data_name in st.session_state:
             st.session_state['valid_X'] = valid_X
             st.session_state['train_y'] = train_y
             st.session_state['valid_y'] = valid_y
+
+            # Add the name of the target variable
+            st.session_state['target_name'] = target
 
             st.info(f"""
             Train_X:\n
@@ -74,8 +82,8 @@ for data_name in st.session_state:
 
 if 'train' not in st.session_state:
     st.markdown("""
-    <p>Please Add train file in order to split the data.</p>
-    <p>The inserted train file must be <b><i>train.csv</i></b></p>
+    <p>Please add train file in order to split the data.</p>
+    <p>The inserted train file must be named <b><i>train.csv.</i></b></p>
     """, unsafe_allow_html=True)
 
 
