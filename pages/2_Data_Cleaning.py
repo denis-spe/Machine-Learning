@@ -81,7 +81,7 @@ if "train_X" in session:
     # Create options to handle missing values in the data .................
 
     # Add a subtitle in the sidebar.
-    SIDEBAR.header('Options To Handle NaN')
+    SIDEBAR.header('Options To Handle Missing Values(NaN)')
 
     # Constructing a multiselector for columns to drop.
     drop_col = SIDEBAR.multiselect(
@@ -89,6 +89,8 @@ if "train_X" in session:
         options=train_X.columns, 
         help="Choose columns to drop"
         )
+    
+
     
     # Drop the columns in all dataset.
     train_X = train_X.drop(drop_col, axis=1)
@@ -100,24 +102,54 @@ if "train_X" in session:
     except NameError:
         pass
 
-    SIDEBAR.write('---')
-
     # Make a select box to select columns to fill.
     col_to_fill = SIDEBAR.multiselect(
         label="Select columns to fill", 
         options=train_X.columns,
+        help="while selecting make sure to select the option to use to fill your selected column."
         )
 
     methods = [0, 'mean', 'median', 'mode', 'unknown'] * len(train_X.columns)
-
-    def add_back_opt(x):
-        methods.append(x)
-        return x
 
     # A Select box to be used to fill missing values in the column.
     fill_options = SIDEBAR.multiselect(
         label="Options to be used to fill", 
         options= methods,
+        help="After selecting the column, choose the option to use to fill your column."
+        )
+
+    SIDEBAR.write('---')
+
+    # Add a subtitle in the sidebar.
+    SIDEBAR.header('Handle Duplicates In Data')
+
+    # Row to keep ducing check for duplicate.
+    keep = SIDEBAR.selectbox(
+        label="Keep", 
+        options=["last", False, True],
+        help="first : Drop duplicates except for the first occurrence.\
+            last : Drop duplicates except for the last occurrence.\
+            False : Drop all duplicates. inplace : bool, default False Whether \
+            to drop duplicates in place or to return a copy. ignore_index : bool,"
+        )
+
+    # Subset for check or drop duplicate.
+    subset_columns = list(train_X.columns)
+    subset_columns.insert(0, None)
+    subset = SIDEBAR.selectbox(
+        label="Subset", 
+        options=subset_columns,
+        help="column label or sequence of labels, optional\
+            Only consider certain columns for identifying duplicates,\
+            by default use all of the columns."
+        )
+
+
+    # Drop duplicate
+    drop_duplicate = SIDEBAR.selectbox(
+        label="Drop Duplicates", 
+        options=[False, True], 
+        help="True: drop all duplicates. False: Don't drop duplicates."
         )
 
 
@@ -171,9 +203,27 @@ if "train_X" in session:
     except NameError:
         pass
 
+    # Drop the duplicates
+    if drop_duplicate:
+        if subset:
+            train_X = train_X.drop_duplicates(subset=[subset])
+            valid_X = valid_X.drop_duplicates(subset=[subset])
+            try:
+                test = test.drop_duplicates(subset=[subset])
+            except NameError:
+                    pass
+        else:
+            train_X = train_X.drop_duplicates(keep=keep)
+            valid_X = valid_X.drop_duplicates(keep=keep)
+            try:
+                test = test.drop_duplicates(keep=keep)
+            except NameError:
+                    pass
+
     # Display dataframes .......................
     with col1.expander("Train Data"):
 
+        st.write("## **Missing Values In Train X**")
         # Construct a missing values data frame.
         train_X_missing_df = nan_check(train_X)
 
@@ -183,12 +233,21 @@ if "train_X" in session:
         # Check if the target variable contains missing values.
         st.write(f"Number of NaN in {session.target_name}: {train_y.isna().sum()}")
 
+        # Check for duplicate
+        st.write("## **Duplicates**")
+        if subset:
+            st.write(f"Number of duplicates in {subset} column:  {train_X.duplicated(subset=[subset]).sum()}")
+        else:
+            st.write(f"Number of duplicates in rows:  {train_X.duplicated(keep=keep).sum()}")
+
         # Add a dataframe for inspection
         st.write('---')
         st.write('## Train_X DataFrame')
         st.write(train_X)
 
     with col2.expander("Validation Data"):
+
+        st.write("## **Missing Values In Valid X**")
 
         # Construct a missing values data frame.
         valid_X_missing_df = nan_check(valid_X)
@@ -199,6 +258,13 @@ if "train_X" in session:
         # Check if the target variable contains missing values.
         st.write(f"Number of NaN in {session.target_name}: {valid_y.isna().sum()}")
 
+        # Check for duplicate
+        st.write("## **Duplicates**")
+        if subset:
+            st.write(f"Number of duplicates in {subset} column:  {valid_X.duplicated(subset=[subset]).sum()}")
+        else:
+            st.write(f"Number of duplicates in row:  {valid_X.duplicated(keep=keep).sum()}")
+
         # Add a dataframe for inspection
         st.write('---')
         st.write('## Validation_X DataFrame')
@@ -207,18 +273,45 @@ if "train_X" in session:
     if "test" in session:
         with col4.expander("Test Data"):
 
+            st.write("## **Missing Values In Test data**")
+
             # Construct a missing values data frame.
             test_X_missing_df = nan_check(test)
 
             # Display the dataframe with number of missing values.
             st.write(test_X_missing_df)
 
+            # Check for duplicate
+            st.write("## **Duplicates**")
+            if subset:
+                st.write(f"Number of duplicates in {subset} column:  {test.duplicated(subset=[subset]).sum()}")
+            else:
+                st.write(f"Number of duplicates in row:  {test.duplicated(keep=keep).sum()}")
+
             # Add a dataframe for inspection
             st.write('---')
             st.write('## Test_X DataFrame')
             st.write(test)
+
+            # Add datasets to the session
+            st.session_state['test'] = test
+    
+    # Add datasets to the session
+    st.session_state['train_X'] = train_X
+    st.session_state['valid_X'] = valid_X
+    st.session_state['train_y'] = train_y
+    st.session_state['valid_y'] = valid_y
+
+    SIDEBAR.write("")
+    SIDEBAR.write("")
+    # Make a page title
+    SIDEBAR.markdown("# Machine Learning")
+    SIDEBAR.write("**Copyright@2022**")
+
 else:
     st.write("First split the data from the data split page to continue")
     st.write("cleaning your data.")
+
+
 
 
