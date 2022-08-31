@@ -32,6 +32,7 @@ load_css("style.css")
 # Setting  Screen layout
 asidebar = st.sidebar
 col1, col2 = st.columns(2)
+col3 = st.columns(1)
 
 asidebar.markdown("""
 <h2 class='sub-title'>Files</h2>
@@ -136,3 +137,11 @@ else:
             )
     st.image("undraw_add_file_re_s4qf.svg")
 
+    st.write("")
+    st.write("")
+# Make a page title
+asidebar.markdown("<h1 style='font-size: 15px;'><center>Machine Learning</center></h1>", unsafe_allow_html=True)
+asidebar.markdown("<center style='font-size: 13px;'>Copyright@2022</center>", unsafe_allow_html=True)
+
+st.markdown("<h1 style='font-size: 15px;'><center>Machine Learning</center></h1>", unsafe_allow_html=True)
+st.markdown("<center style='font-size: 13px;'>Copyright@2022</center>", unsafe_allow_html=True)

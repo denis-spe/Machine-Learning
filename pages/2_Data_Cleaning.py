@@ -56,6 +56,7 @@ st.markdown("# Data Cleaning")
 
 # Seperate into pages.
 SIDEBAR = st.sidebar
+SIDEBAR.markdown("# Data Cleaning")
 col3 = st.columns(2)
 col1, col2, col4 = st.columns(3)
 
@@ -305,13 +306,15 @@ if "train_X" in session:
     SIDEBAR.write("")
     SIDEBAR.write("")
     # Make a page title
-    SIDEBAR.markdown("# Machine Learning")
-    SIDEBAR.write("**Copyright@2022**")
+    SIDEBAR.markdown("<h1 style='font-size: 15px;'><center>Machine Learning</center></h1>", unsafe_allow_html=True)
+    SIDEBAR.markdown("<center style='font-size: 13px;'>Copyright@2022</center>", unsafe_allow_html=True)
 
 else:
     st.write("First split the data from the data split page to continue")
     st.write("cleaning your data.")
 
+st.markdown("<h1 style='font-size: 15px;'><center>Machine Learning</center></h1>", unsafe_allow_html=True)
+st.markdown("<center style='font-size: 13px;'>Copyright@2022</center>", unsafe_allow_html=True)
 
 
 
