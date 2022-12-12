@@ -6,6 +6,7 @@ import pandas as pd
 # Set the page main title
 st.set_page_config(
     page_title="ML",
+    layout='wide'
 )
 
 # Gathering Data
@@ -109,7 +110,16 @@ if upload_file:
                     # Set column as index
                     columns = list(df_2.columns)
                     columns.insert(0, None)
-                    set_index_col = st.selectbox('Set column as index', options=columns)
+
+                    if set_index_col is not None:
+                        try:
+                            index = columns.index(set_index_col)
+                        except ValueError:
+                            index = 0
+                    else:
+                        index = 0
+
+                    set_index_col = st.selectbox('Set column as index', options=columns, index=index)
                     if set_index_col:
                         df_2 = df_2.set_index(set_index_col)
 

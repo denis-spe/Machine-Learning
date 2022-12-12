@@ -1,5 +1,14 @@
 # import libraries ------------------------------------
+from matplotlib import pyplot as plt
+from matplotlib.style import use
+import numpy as np
 import streamlit as st
+import altair as alt
+import pandas as pd
+import seaborn as sns
+import plotly.express as px
+
+use('ggplot')
 
 # Set the page main title .............
 st.set_page_config(
@@ -31,13 +40,102 @@ if len(session) != 0:
     # Change the session to dictonary ......
     df_dict = dict(session)
 
-    data = SIDEBAR.selectbox('Datasets', options=df_dict.keys())
+    # Data names .....
+    data_names = list(filter(
+        lambda x: x in ["train", "test"], 
+        df_dict.keys())
+        )    
+    # Data name selection .......
+    data_selector = SIDEBAR.selectbox(
+        'Datasets', 
+        options=data_names,
+        index=len(data_names) - 1
+        )
+    
+    # Get the data from selected data name.....
+    data = session[data_selector]
 
-    # Add input box to sidebar .......
-    chart = SIDEBAR.selectbox("Graph Type", options=['Bar', 'Histogram', 'Line', 'Scatter'])
+    # Data columns .....
+    columns = list(data.columns)
 
-    if chart == 'Bar':
-        bar_type = SIDEBAR.selectbox('Bar Type', options=['Bar', 'Col Bar', 'Stacked Bar', 'Correlation Bar'])
+    try:
+        # Target name ....
+        target_name = df_dict['target_name']
+    except KeyError:
+        pass
+
+    # -------- Create sidebar tabs ------------
+    relative_sidebar, categorical_sidebar, continuous_sidebar = SIDEBAR.tabs(tabs=[
+        "ralative",
+        "categorical",
+        "continuous"
+        ])
+
+    # Relative sidebar ........
+    with relative_sidebar:
+        # Relative chart type.
+        relative_chart = st.selectbox("Ralative charts", options=["scatter matrix", "heatmap"])
+
+        # Mapping color.
+        try:
+            relative_map_color = st.selectbox("Map color", options=columns, index=columns.index(target_name))
+        except ValueError:
+            relative_map_color = st.selectbox("Map color", options=columns)
+
+
+    # Categorical sidebar .......
+    with categorical_sidebar:
+        # Add input box to sidebar .
+        cat_chart = st.selectbox("Charts", options=['Bar', 'Histogram', 'Line', 'Scatter'])
+
+        if cat_chart == 'Bar':
+            bar_type = st.selectbox('Bar Type', options=['Bar', 'Col Bar', 'Stacked Bar'])
+    
+
+    # -------- Create tabs ------------
+    relative, categorical, continuous = st.tabs(tabs=[
+        "ralative",
+        "categorical",
+        "continuous"
+        ])
+    
+    # Relative .......
+    with relative:
+        # Make a copy from the data.
+        data_copy = data.copy()
+        if data_copy[relative_map_color].nunique() < 16:
+            data_copy[relative_map_color] = data_copy[relative_map_color].astype("str")
+
+        numeric_col = [
+            col
+            for col in data_copy.columns
+            if data_copy[col].dtype != 'object'
+        ]
+
+        if relative_chart == "scatter matrix":
+            scatter_mat = alt.Chart(data_copy).mark_circle().encode(
+                        alt.X(alt.repeat("column"), type='quantitative'),
+                        alt.Y(alt.repeat("row"), type='quantitative'),
+                        color=relative_map_color,
+                        tooltip=numeric_col + [target_name]
+                        ).properties(
+                            width=150,
+                            height=150
+                        ).repeat(
+                            row=numeric_col,
+                            column=numeric_col
+                        ).interactive()
+            
+            st.altair_chart(scatter_mat)
+
+        if relative_chart == 'heatmap':
+            # Data correlation matrix.
+            corr: pd.DataFrame = data_copy.corr()
+
+            fig = px.imshow(corr, text_auto=True)
+            st.plotly_chart(fig)
+
+    
 
     SIDEBAR.write("")
     SIDEBAR.write("")

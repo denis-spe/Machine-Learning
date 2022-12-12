@@ -7,6 +7,8 @@ import numpy as np
 # Set the page main title
 st.set_page_config(
     page_title="ML | Data Cleaning",
+    layout='wide'
+    
 )
 
 # Load Css file
@@ -41,6 +43,15 @@ def nan_check(data: pd.DataFrame):
         "N_Missing_Values": data_missing,
         "Percent": precent
         }).reset_index(drop=True)
+
+    # Adding column type column.
+    data_missing_df['col_dtype'] = [
+        str(data[column].dtypes)
+        for column in data_missing_df['Col']
+    ]
+
+    # Sort the dataframe with N_Missing_Values.
+    data_missing_df = data_missing_df.sort_values(by='N_Missing_Values', ascending=False)
     
     return data_missing_df
 
@@ -91,8 +102,6 @@ if "train_X" in session:
         help="Choose columns to drop"
         )
     
-
-    
     # Drop the columns in all dataset.
     train_X = train_X.drop(drop_col, axis=1)
     valid_X = valid_X.drop(drop_col, axis=1)
@@ -102,6 +111,58 @@ if "train_X" in session:
         test = test.drop(drop_col, axis=1)
     except NameError:
         pass
+    
+    # Drop columns with drop percentage greater than or e
+    conditional_drop = SIDEBAR.number_input(
+        label='Drop with percentage',
+        help=('Drop all columns with number of missing\
+            percentage greater than or equal to number of percent')
+    )
+
+    if conditional_drop > 0:
+        # Check for missing values.
+        train_X_check = nan_check(train_X)
+
+        # Replace the % with ''.
+        train_X_check['Percent'] = (
+            train_X_check['Percent'].str
+            .replace('%', '')
+            .astype(float))
+
+        # Get the columns with missing values
+        train_col = train_X_check[
+            train_X_check['Percent'] >= conditional_drop
+            ]['Col']
+        
+        drop_col_list = train_col.tolist()
+
+        # Drop the columns in all dataset.
+        train_X = train_X.drop(drop_col_list, axis=1)
+        valid_X = valid_X.drop(drop_col_list, axis=1)
+
+        try:
+            # Catch the name error since test is optianal.
+            test = test.drop(drop_col_list, axis=1)
+        except NameError:
+            pass
+
+
+    # Make a select box to select columns to fill.
+    auto_methods = [
+        "None",
+        "mode to all", 
+        "mode to only categorical",
+        "mode to only numerical",
+        "numerical median", 
+        "numerical mean"
+        ]
+    
+    auto_fill = SIDEBAR.selectbox(
+        label='Auto fill all',
+        options=auto_methods,
+        help="Auto fill all categorical or numerical column"
+    )
+
 
     # Make a select box to select columns to fill.
     col_to_fill = SIDEBAR.multiselect(
@@ -195,6 +256,63 @@ if "train_X" in session:
                 test = test.fillna({col: test[col].mode()[0]})
             except NameError:
                 pass
+
+    
+    for col in train_X.columns:
+        if auto_fill == "mode to all":
+            train_X = train_X.fillna({col: train_X[col].mode()[0]})
+            valid_X = valid_X.fillna({col: valid_X[col].mode()[0]})
+
+            try:
+                # Catch the name error since test is optianal.
+                test = test.fillna({col: test[col].mode()[0]})
+            except NameError:
+                pass
+
+        if auto_fill == "mode to only categorical":
+            if str(train_X[col].dtypes).startswith('object'):
+                train_X = train_X.fillna({col: train_X[col].mode()[0]})
+                valid_X = valid_X.fillna({col: valid_X[col].mode()[0]})
+
+                try:
+                    # Catch the name error since test is optianal.
+                    test = test.fillna({col: test[col].mode()[0]})
+                except NameError:
+                    pass
+            
+        if auto_fill == "numerical median":
+            if str(train_X[col].dtypes).startswith('int') or str(train_X[col].dtype).startswith('float'):
+                train_X = train_X.fillna({col: train_X[col].median()})
+                valid_X = valid_X.fillna({col: valid_X[col].median()})
+
+                try:
+                    # Catch the name error since test is optianal.
+                    test = test.fillna({col: test[col].median()})
+                except NameError:
+                    pass
+        
+        if  auto_fill == "numerical mean":
+            if str(train_X[col].dtypes).startswith('int') or str(train_X[col].dtype).startswith('float'):
+                train_X = train_X.fillna({col: train_X[col].mean()})
+                valid_X = valid_X.fillna({col: valid_X[col].mean()})
+
+                try:
+                    # Catch the name error since test is optianal.
+                    test = test.fillna({col: test[col].mean()})
+                except NameError:
+                    pass
+        
+        if auto_fill == "mode to only numerical":
+            if str(train_X[col].dtypes).startswith('int') or str(train_X[col].dtype).startswith('float'):
+                train_X = train_X.fillna({col: train_X[col].mode()[0]})
+                valid_X = valid_X.fillna({col: valid_X[col].mode()[0]})
+
+                try:
+                    # Catch the name error since test is optianal.
+                    test = test.fillna({col: test[col].mode()[0]})
+                except NameError:
+                    pass
+
         
     # Create bar chart from showing the number missing values in each column .........
     col1.bar_chart(train_X.isna().sum())
@@ -228,6 +346,11 @@ if "train_X" in session:
         # Construct a missing values data frame.
         train_X_missing_df = nan_check(train_X)
 
+        # Filter out the columns with missing values.
+        train_missing_df = train_X_missing_df[train_X_missing_df['N_Missing_Values'] > 0]
+
+        st.write("**Number of columns with missing values: {}**".format(train_missing_df.shape[0]))
+
         # Display the dataframe with number of missing values.
         st.write(train_X_missing_df)
 
@@ -246,12 +369,26 @@ if "train_X" in session:
         st.write('## Train_X DataFrame')
         st.write(train_X)
 
+        # Data shape
+        train_shape = train_X.shape
+        st.info("""
+        Test shape
+        rows: {}
+        columns: {}
+        """.format(train_shape[0], train_shape[1])
+        )
+
     with col2.expander("Validation Data"):
 
         st.write("## **Missing Values In Valid X**")
 
         # Construct a missing values data frame.
         valid_X_missing_df = nan_check(valid_X)
+
+        # Filter out the columns with missing values.
+        valid_missing_df = valid_X_missing_df[valid_X_missing_df['N_Missing_Values'] > 0]
+
+        st.write("**Number of columns with missing values: {}**".format(valid_missing_df.shape[0]))
 
         # Display the dataframe with number of missing values.
         st.write(valid_X_missing_df)
@@ -271,6 +408,15 @@ if "train_X" in session:
         st.write('## Validation_X DataFrame')
         st.write(valid_X)
 
+        # Data shape
+        valid_shape = valid_X.shape
+        st.info("""
+        Valid shape
+        rows: {}
+        columns: {}
+        """.format(valid_shape[0], valid_shape[1])
+        )
+
     if "test" in session:
         with col4.expander("Test Data"):
 
@@ -278,6 +424,11 @@ if "train_X" in session:
 
             # Construct a missing values data frame.
             test_X_missing_df = nan_check(test)
+
+            # Filter out the columns with missing values.
+            test_missing_df = test_X_missing_df[test_X_missing_df['N_Missing_Values'] > 0]
+
+            st.write("**Number of columns with missing values: {}**".format(test_missing_df.shape[0]))
 
             # Display the dataframe with number of missing values.
             st.write(test_X_missing_df)
@@ -293,6 +444,15 @@ if "train_X" in session:
             st.write('---')
             st.write('## Test_X DataFrame')
             st.write(test)
+
+            # Data shape
+            test_shape = test.shape
+            st.info("""
+            Test shape
+            rows: {}
+            columns: {}
+            """.format(test_shape[0], test_shape[1])
+            )
 
             # Add datasets to the session
             st.session_state['test'] = test
