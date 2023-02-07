@@ -2,6 +2,7 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
+from typing import List
 
 # Set the page main title
 st.set_page_config(
@@ -26,6 +27,53 @@ def load_css(path):
         st.markdown(f"<style>{file.read()}</style>", unsafe_allow_html=True)
 
 
+def convert_dtype(data, dtypes: List = None):
+    columns = data.columns
+
+    for column in columns:
+        if dtypes:
+            for dtype in dtypes:
+                if str(data[column].dtype).startswith('int'):
+                    if dtype == 'int8':
+                        data[column] = data[column].astype(np.int8)
+                    if dtype == 'int16':
+                        data[column] = data[column].astype(np.int16)
+                    if dtype == 'int32':
+                        data[column] = data[column].astype(np.int32)
+                    if dtype == 'int64':
+                        data[column] = data[column].astype(np.int64)
+                
+                if str(data[column].dtype).startswith('float'):
+                    if dtype == 'float16':
+                        data[column] = data[column].astype(np.float16)
+                    if dtype == 'float32':
+                        data[column] = data[column].astype(np.float32)
+                    if dtype == 'float64':
+                        data[column] = data[column].astype(np.float64)
+
+    
+    return data
+
+
+def info(data):
+    columns = data.columns
+    dtypes = [
+        data[column].dtypes
+        for column in columns
+        ]
+    
+    # Create a data frame.
+    df = pd.DataFrame({
+        'columns': columns,
+        'dtype': dtypes
+    })
+
+    df.set_index('columns')
+
+    return df
+            
+
+
 # loading the css file 
 load_css("style.css")
 
@@ -40,14 +88,19 @@ asidebar.markdown("""
 """, unsafe_allow_html=True)
 
 # Upload files -------------------------------------------
-with st.expander("Upload the file"):
-    upload_file = asidebar.file_uploader("Please upload the csv file", accept_multiple_files=True)
+upload_file = asidebar.file_uploader("Please upload the csv file", accept_multiple_files=True)
+
+select_dtype = asidebar.multiselect(
+    'Data type Selection', 
+    options=['int8', 'int16', 'int32', 'int64', 'float16', 'float32', 'float32', 'float64'])
 
 if upload_file:
     try:
         # ********* Data Descriptive Analysis **********
         with col1:
             df_1 = pd.read_csv(upload_file[0])
+            # Convert the dtype.
+            df_1 = convert_dtype(df_1, select_dtype)
             data_name_1 = upload_file[0].name.split('.')[0]
             
             st.markdown(f"<h3 class='sub-title'>{data_name_1.capitalize()}</h3>", unsafe_allow_html=True)
@@ -82,11 +135,18 @@ if upload_file:
                 st.write(", ".join([col for col in df_1.columns]))
             
             # View the data description
+            with st.expander('Data Information'):
+                st.write(info(df_1))
+                
+
+            # View the data description
             with st.expander('Data Description'):
                 st.write(df_1.describe())
 
         if len(upload_file) == 2:
             df_2 = pd.read_csv(upload_file[1])
+            # Convert the dtype.
+            df_2 = convert_dtype(df_2, select_dtype)
             with col2:
                 data_name_2 = upload_file[1].name.split('.')[0]
                 st.markdown(f"<h3 class='sub-title'>{data_name_2.capitalize()}</h3>", unsafe_allow_html=True)
@@ -129,6 +189,10 @@ if upload_file:
                 # Display all dataframe column names
                 with st.expander("columns"):
                     st.write(", ".join([col for col in df_2.columns]))
+
+                # View the data description
+                with st.expander('Data Information'):
+                    st.write(info(df_2))
 
                 # View the data description
                 with st.expander('Data Description'):

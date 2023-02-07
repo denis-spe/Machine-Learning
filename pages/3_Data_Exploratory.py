@@ -1,4 +1,5 @@
 # import libraries ------------------------------------
+import time
 from matplotlib import pyplot as plt
 from matplotlib.style import use
 import numpy as np
@@ -113,6 +114,11 @@ if len(session) != 0:
         ]
 
         if relative_chart == "scatter matrix":
+            bar = st.progress(0)
+            for percent in range(100):
+                time.sleep(0.1)
+                bar.progress(percent + 1)
+
             scatter_mat = alt.Chart(data_copy).mark_circle().encode(
                         alt.X(alt.repeat("column"), type='quantitative'),
                         alt.Y(alt.repeat("row"), type='quantitative'),

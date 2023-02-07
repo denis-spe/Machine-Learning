@@ -268,6 +268,8 @@ if "train_X" in session:
                 test = test.fillna({col: test[col].mode()[0]})
             except NameError:
                 pass
+            except KeyError:
+                continue
 
         if auto_fill == "mode to only categorical":
             if str(train_X[col].dtypes).startswith('object'):
