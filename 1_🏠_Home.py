@@ -91,8 +91,10 @@ asidebar.markdown("""
 upload_file = asidebar.file_uploader("Please upload the csv file", accept_multiple_files=True)
 
 select_dtype = asidebar.multiselect(
-    'Data type Selection', 
-    options=['int8', 'int16', 'int32', 'int64', 'float16', 'float32', 'float32', 'float64'])
+    'Change numeric precision', 
+    options=['int8', 'int16', 'int32', 'int64', 'float16', 'float32', 'float32', 'float64'],
+    help="Select one or two different numeric data type for the columns"
+    )
 
 if upload_file:
     try:

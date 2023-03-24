@@ -114,25 +114,21 @@ if len(session) != 0:
         ]
 
         if relative_chart == "scatter matrix":
-            bar = st.progress(0)
-            for percent in range(100):
-                time.sleep(0.1)
-                bar.progress(percent + 1)
-
-            scatter_mat = alt.Chart(data_copy).mark_circle().encode(
-                        alt.X(alt.repeat("column"), type='quantitative'),
-                        alt.Y(alt.repeat("row"), type='quantitative'),
-                        color=relative_map_color,
-                        tooltip=numeric_col + [target_name]
-                        ).properties(
-                            width=150,
-                            height=150
-                        ).repeat(
-                            row=numeric_col,
-                            column=numeric_col
-                        ).interactive()
+            st.write(data)
+            # scatter_mat = alt.Chart(data_copy.sample(10)).mark_circle().encode(
+            #             alt.X(alt.repeat("column"), type='quantitative'),
+            #             alt.Y(alt.repeat("row"), type='quantitative'),
+            #             color=relative_map_color,
+            #             tooltip=numeric_col + [target_name]
+            #             ).properties(
+            #                 width=150,
+            #                 height=150
+            #             ).repeat(
+            #                 row=numeric_col,
+            #                 column=numeric_col
+            #             ).interactive()
             
-            st.altair_chart(scatter_mat)
+            # st.altair_chart(scatter_mat)
 
         if relative_chart == 'heatmap':
             # Data correlation matrix.

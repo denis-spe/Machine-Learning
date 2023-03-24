@@ -1,8 +1,11 @@
+# Bless The Lord --- God ---
+
 # import libraries ------------------------------------
 from cmath import nan
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Set the page main title
 st.set_page_config(
@@ -15,6 +18,64 @@ st.set_page_config(
 def load_css(path):
     with open(path, mode='r') as file:
         st.markdown(f"<style>{file.read()}</style>", unsafe_allow_html=True)
+
+
+def outliers(data: pd.DataFrame, column: str) -> pd.DataFrame:
+    """
+    Represent outliers in data
+    
+    # Parameter:
+
+        data: (pd.Series) Data to check for outliner.
+        column: (str) Column name.
+    
+    # Return:
+
+        A DataFrame with outliner
+    """
+
+    q1 = np.percentile(data[column], 25)
+    q3 = np.percentile(data[column], 75)
+
+    # Calculate the interquartile range
+    interquartile_range = q3 - q1
+
+    # Initialize the lower threshold.
+    lower_threshold = q1 - 1.5 * interquartile_range
+
+    # Initialize the upper threshold.
+    upper_threshold = q3 + 1.5 * interquartile_range
+
+    # FIlter out outlinear values.
+    filter_outlier_values = (data[column] < lower_threshold) | (data[column] > upper_threshold)
+    filter_out_outlier = np.logical_not(filter_outlier_values)
+    return {"no_outliers": filter_out_outlier, "outliers": filter_outlier_values}
+
+
+def outliersChecker(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Represents a dataframe with column name of the data
+    with number of outliers
+    # Parameter
+    ----------
+    data: pandas dataframe to check for outliers
+    # Return
+    _______
+    Dataframe with data column name with number of outliers
+    """
+    # Exclude all object columns
+    columns = data.select_dtypes(exclude="object").columns
+    
+    outliers_data = [
+        outliers(data, column)["outliers"].sum()
+        for column in columns
+    ]
+
+    outliers_df = pd.DataFrame({
+        "column": columns, 
+        "N_outliers": outliers_data})
+
+    return outliers_df.loc[outliers_df["N_outliers"] > 0]
 
 
 def nan_check(data: pd.DataFrame):
@@ -52,6 +113,9 @@ def nan_check(data: pd.DataFrame):
 
     # Sort the dataframe with N_Missing_Values.
     data_missing_df = data_missing_df.sort_values(by='N_Missing_Values', ascending=False)
+
+    # Set the column as index
+    data_missing_df = data_missing_df.set_index("Col")
     
     return data_missing_df
 
@@ -74,13 +138,20 @@ col1, col2, col4 = st.columns(3)
 if "train_X" in session:
     col3[0].markdown("**Here are the columns with missing value**")
 
+    # Adding subtitles to the train sample and test data.
+    col1.markdown("**Train Data Sample**")
+    col2.markdown("**Validation Data Sample**")
+    col4.markdown("**Test Data**")
+
+
     # Instantiate the validation data.
     train_X: pd.DataFrame = session["train_X"]
     train_y: pd.Series = session["train_y"]
 
+
     # Instantiate the validation data.
     valid_X: pd.DataFrame = session["valid_X"]
-    valid_y: pd.Series = session["valid_y"]
+    valid_y: pd.Series = session["valid_y"]   
 
     try:
         # Instantiate the validation data.
@@ -360,11 +431,20 @@ if "train_X" in session:
         st.write(f"Number of NaN in {session.target_name}: {train_y.isna().sum()}")
 
         # Check for duplicate
-        st.write("## **Duplicates**")
+        st.write("## **Duplicates In The Dataset**")
         if subset:
             st.write(f"Number of duplicates in {subset} column:  {train_X.duplicated(subset=[subset]).sum()}")
         else:
             st.write(f"Number of duplicates in rows:  {train_X.duplicated(keep=keep).sum()}")
+
+        # **** Handling outlies ***
+        st.write("## **Outliers In The Dataset**")
+        st.write("Columns containing outlier values in train data")
+
+        # Check for outliers
+        checker = outliersChecker(train_X)
+        st.write(checker)
+
 
         # Add a dataframe for inspection
         st.write('---')
@@ -374,7 +454,7 @@ if "train_X" in session:
         # Data shape
         train_shape = train_X.shape
         st.info("""
-        Test shape
+        Train shape
         rows: {}
         columns: {}
         """.format(train_shape[0], train_shape[1])
@@ -404,6 +484,14 @@ if "train_X" in session:
             st.write(f"Number of duplicates in {subset} column:  {valid_X.duplicated(subset=[subset]).sum()}")
         else:
             st.write(f"Number of duplicates in row:  {valid_X.duplicated(keep=keep).sum()}")
+
+        # **** Handling outlies ***
+        st.write("## **Outliers In The Dataset**")
+        st.write("Columns containing outlier values in validation data")
+
+        # Check for outliers
+        checker = outliersChecker(valid_X)
+        st.write(checker)
 
         # Add a dataframe for inspection
         st.write('---')
@@ -441,6 +529,14 @@ if "train_X" in session:
                 st.write(f"Number of duplicates in {subset} column:  {test.duplicated(subset=[subset]).sum()}")
             else:
                 st.write(f"Number of duplicates in row:  {test.duplicated(keep=keep).sum()}")
+
+            # **** Handling outlies ***
+            st.write("## **Outliers In The Dataset**")
+            st.write("Columns containing outlier values in test data")
+
+            # Check for outliers
+            checker = outliersChecker(test)
+            st.write(checker)
 
             # Add a dataframe for inspection
             st.write('---')
