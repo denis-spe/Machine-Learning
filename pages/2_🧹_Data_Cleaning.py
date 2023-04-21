@@ -56,12 +56,13 @@ def outliersChecker(data: pd.DataFrame) -> pd.DataFrame:
     """
     Represents a dataframe with column name of the data
     with number of outliers
-    # Parameter
+    Parameter
     ----------
-    data: pandas dataframe to check for outliers
-    # Return
-    _______
-    Dataframe with data column name with number of outliers
+        data: pandas dataframe to check for outliers
+
+    Return
+    --------
+        Dataframe with data column name with number of outliers
     """
     # Exclude all object columns
     columns = data.select_dtypes(exclude="object").columns
@@ -73,12 +74,43 @@ def outliersChecker(data: pd.DataFrame) -> pd.DataFrame:
 
     outliers_df = pd.DataFrame({
         "column": columns, 
-        "N_outliers": outliers_data})
+        "num_outliers": outliers_data})
 
-    return outliers_df.loc[outliers_df["N_outliers"] > 0]
+    return outliers_df.sort_values(by="num_outliers", ascending=False)
 
 
-def nan_check(data: pd.DataFrame):
+def drop_outliers(data: pd.DataFrame, column: str) -> pd.DataFrame:
+    """
+    Drops outliers in a columns if it has outliers values
+    # Parameter
+    ----------
+        data: pandas data frame to remove outlier values
+    
+    # Return
+    --------
+        A new data frame without outlier
+    """
+    # slices for values without outliers
+    no_outliers = outliers(data, column)["no_outliers"]
+
+    # Select value which are not outliers
+    data = data[no_outliers]
+        
+    return data
+
+def drop_all_outliers(data: pd.DataFrame, columns) -> pd.DataFrame:
+    for col in columns:
+        data = drop_outliers(data, col)
+        
+
+    return data
+
+
+
+
+
+
+def nan_check(data: pd.DataFrame) -> pd.DataFrame:
     """
     Check for missing values in the data frame.
     
@@ -151,7 +183,7 @@ if "train_X" in session:
 
     # Instantiate the validation data.
     valid_X: pd.DataFrame = session["valid_X"]
-    valid_y: pd.Series = session["valid_y"]   
+    valid_y: pd.Series = session["valid_y"]
 
     try:
         # Instantiate the validation data.
@@ -285,6 +317,48 @@ if "train_X" in session:
         help="True: drop all duplicates. False: Don't drop duplicates."
         )
 
+    # ** Dealing with outliers **
+    SIDEBAR.write("-----")
+
+    # Select the data frame to handlw for outliers
+    SIDEBAR.write("Dataset To Drop Outliers") 
+
+    # Get only the numeric data
+    numeric_df = train_X.select_dtypes(exclude='object')
+
+    # Select numeric columns
+    train_numeric_selection = SIDEBAR.multiselect(
+                label="Select Column To Drop Outliers In Train Data",
+                options=numeric_df.columns,
+                help="""Drop outlier values in the selected column, 
+                Note: That dropping value will lead to loss of data"""
+            )
+    # Drop outliers values
+    train_X = drop_all_outliers(train_X, train_numeric_selection)
+
+    # Select numeric columns
+    valid_numeric_selection = SIDEBAR.multiselect(
+                label="Select Column To Drop Outliers In Validation Data",
+                options=numeric_df.columns,
+                help="""Drop outlier values in the selected column, 
+                Note: That dropping value will lead to loss of data"""
+    )
+    # Drop outliers values
+    valid_X = drop_all_outliers(valid_X, valid_numeric_selection)
+
+    if 'test' in session:
+        # Select numeric columns
+        test_numeric_selection = SIDEBAR.multiselect(
+                    label="Select Column To Drop Outliers In Test Data",
+                    options=numeric_df.columns,
+                    help="""Drop outlier values in the selected column, 
+                    Note: That dropping value will lead to loss of data"""
+                )
+        # Drop outliers values
+        test = drop_all_outliers(test, test_numeric_selection)
+    
+    
+
 
     # Loop over a zip of col_to_fill with fill_options
     for col, fill in zip(col_to_fill, fill_options):
@@ -411,6 +485,7 @@ if "train_X" in session:
                 test = test.drop_duplicates(keep=keep)
             except NameError:
                     pass
+
 
     # Display dataframes .......................
     with col1.expander("Train Data"):
