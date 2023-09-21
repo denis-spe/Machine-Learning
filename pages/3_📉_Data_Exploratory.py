@@ -1,13 +1,14 @@
 # import libraries ------------------------------------
-import time
-from matplotlib import pyplot as plt
-from matplotlib.style import use
-import numpy as np
+import pandas as pd
+import plotly.express as px
 import streamlit as st
 import altair as alt
-import pandas as pd
-import seaborn as sns
-import plotly.express as px
+from charts import plots
+from typing import Dict
+from matplotlib.style import use
+import time
+
+from data_handling.data_type import separate_columns_by_threshold
 
 use('ggplot')
 
@@ -16,10 +17,30 @@ st.set_page_config(
     page_title="ML | Data Exploratory",
 )
 
+
 # Load Css file ...........
 def load_css(path):
     with open(path, mode='r') as file:
         st.markdown(f"<style>{file.read()}</style>", unsafe_allow_html=True)
+
+
+def combine_data(sess: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+    # Get the target name
+    _target_name = str(sess["target_name"])
+    print(sess["train_X"])
+
+    # Combine train data with its target
+    train: pd.DataFrame = sess["train_X"]
+    train[_target_name] = sess["train_y"]
+
+    # Combine validation data with its target
+    valid: pd.DataFrame = sess["valid_X"]
+    valid[_target_name] = sess["valid_y"]
+
+    train = pd.concat([train, valid])
+
+    return train
+
 
 # loading the css file .............
 load_css("style.css")
@@ -38,23 +59,28 @@ SIDEBAR.markdown("# Data Exploratory")
 session = st.session_state
 
 if len(session) != 0:
-    # Change the session to dictonary ......
+    # Change the session to dictionary ......
     df_dict = dict(session)
 
     # Data names .....
     data_names = list(filter(
-        lambda x: x in ["train", "test"], 
+        lambda x: x in ["train", "test"],
         df_dict.keys())
-        )    
+    )
+
+    data_names.append("combined train valid data")
     # Data name selection .......
     data_selector = SIDEBAR.selectbox(
-        'Datasets', 
+        'Datasets',
         options=data_names,
         index=len(data_names) - 1
-        )
-    
-    # Get the data from selected data name.....
-    data = session[data_selector]
+    )
+
+    if data_selector == "combined train valid data":
+        data = combine_data(session)
+    else:
+        # Get the data from selected data name .....
+        data = session[data_selector]
 
     # Data columns .....
     columns = list(data.columns)
@@ -65,45 +91,76 @@ if len(session) != 0:
     except KeyError:
         pass
 
+    # --------- Make a copy from the data. ------
+    data_copy = data.copy()
+
+    # Separate columns by threshold
+    column_sep_threshold = SIDEBAR.slider("Column separate threshold", max_value=30, min_value=10)
+    columns_dict = separate_columns_by_threshold(data_copy, column_sep_threshold)
+    categorical_columns = columns_dict["categorical_columns"]
+    continuous_columns = columns_dict["continuous_columns"]
+
     # -------- Create sidebar tabs ------------
-    relative_sidebar, categorical_sidebar, continuous_sidebar = SIDEBAR.tabs(tabs=[
-        "ralative",
+    categorical_sidebar, continuous_sidebar, relative_sidebar = SIDEBAR.tabs(tabs=[
         "categorical",
-        "continuous"
-        ])
+        "continuous",
+        "relative",
+    ])
 
     # Relative sidebar ........
     with relative_sidebar:
         # Relative chart type.
-        relative_chart = st.selectbox("Ralative charts", options=["scatter matrix", "heatmap"])
+        relative_chart = st.selectbox("Relative charts", options=["scatter matrix", "heatmap"])
 
         # Mapping color.
         try:
-            relative_map_color = st.selectbox("Map color", options=columns, index=columns.index(target_name))
+            relative_map_color = st.selectbox("color by", options=columns, index=columns.index(target_name))
         except ValueError:
-            relative_map_color = st.selectbox("Map color", options=columns)
-
+            relative_map_color = st.selectbox("color by", options=columns)
 
     # Categorical sidebar .......
     with categorical_sidebar:
-        # Add input box to sidebar .
-        cat_chart = st.selectbox("Charts", options=['Bar', 'Histogram', 'Line', 'Scatter'])
+        # Add input box to the sidebar.
+        cat_chart = st.selectbox("Charts", options=['Bar', 'Pie chart'])
 
         if cat_chart == 'Bar':
-            bar_type = st.selectbox('Bar Type', options=['Bar', 'Col Bar', 'Stacked Bar'])
-    
+            bar_type = st.selectbox('Bar Type', options=[
+                'Bar',
+                'Highlighted Bar'
+            ])
+
+        if cat_chart == 'Pie chart':
+            bar_type = st.selectbox('Pie chart Type', options=['Pie chart', 'Donut chart'])
 
     # -------- Create tabs ------------
-    relative, categorical, continuous = st.tabs(tabs=[
-        "ralative",
+    categorical, continuous, relative = st.tabs(tabs=[
         "categorical",
-        "continuous"
-        ])
-    
+        "continuous",
+        "relative"
+    ])
+
+    with categorical:
+        if cat_chart == 'Bar':
+            if bar_type == 'Bar':
+                # x, y and color map inputs
+                x = SIDEBAR.selectbox("X", options=categorical_columns, index=0)
+                plots.bar_chart(data, x=x)
+
+            if bar_type == 'Highlighted Bar':
+                # x, y and color map inputs
+                x = SIDEBAR.selectbox("X", options=continuous_columns, index=0)
+                y = SIDEBAR.selectbox("y", options=continuous_columns, index=1)
+                highlight = SIDEBAR.selectbox("highlight", options=["max", "min"], index=1)
+
+                plots.highlighted_bar(
+                    data,
+                    x,
+                    y,
+                    highlight_type=highlight
+                )
+
     # Relative .......
     with relative:
-        # Make a copy from the data.
-        data_copy = data.copy()
         if data_copy[relative_map_color].nunique() < 16:
             data_copy[relative_map_color] = data_copy[relative_map_color].astype("str")
 
@@ -113,31 +170,43 @@ if len(session) != 0:
             if data_copy[col].dtype != 'object'
         ]
 
-        if relative_chart == "scatter matrix":
-            st.write(data)
-            # scatter_mat = alt.Chart(data_copy.sample(10)).mark_circle().encode(
-            #             alt.X(alt.repeat("column"), type='quantitative'),
-            #             alt.Y(alt.repeat("row"), type='quantitative'),
-            #             color=relative_map_color,
-            #             tooltip=numeric_col + [target_name]
-            #             ).properties(
-            #                 width=150,
-            #                 height=150
-            #             ).repeat(
-            #                 row=numeric_col,
-            #                 column=numeric_col
-            #             ).interactive()
-            
-            # st.altair_chart(scatter_mat)
+        if relative_chart == "scatter matrix" and len(numeric_col) <= 10:
+            with st.progress(value=1.0, text="Loading wait plesse"):
+                scatter_mat = alt.Chart(data_copy[numeric_col]).mark_circle().encode(
+                    alt.X(alt.repeat("column"), type='quantitative'),
+                    alt.Y(alt.repeat("row"), type='quantitative'),
+                    color=relative_map_color,
+                    tooltip=numeric_col + [target_name]
+                ).properties(
+                    width=150,
+                    height=150
+                ).repeat(
+                    row=numeric_col,
+                    column=numeric_col
+                ).interactive()
 
-        if relative_chart == 'heatmap':
-            # Data correlation matrix.
-            corr: pd.DataFrame = data_copy.corr()
+                st.altair_chart(scatter_mat)
 
-            fig = px.imshow(corr, text_auto=True)
-            st.plotly_chart(fig)
-
+                time.sleep(5)
     
+
+        elif relative_chart == 'heatmap':
+                with st.progress(value=1.0, text="Loading wait plesse"):
+
+                    # Data correlation matrix.
+                    corr: pd.DataFrame = data_copy.select_dtypes(exclude=["object"]).corr(numeric_only=False)
+                    fig = px.imshow(corr, text_auto=True, width=900, height=800)
+                    fig.update_layout(
+                        title=("Correlation of %s" % (
+                            data_selector 
+                            if data_selector.endswith("data") 
+                            else data_selector + " data")).title(),
+                    )
+                    st.plotly_chart(fig)
+
+                    time.sleep(3)
+        else:
+            st.write("Too Many Column To Show Scatter Matrix")
 
     SIDEBAR.write("")
     SIDEBAR.write("")
@@ -146,7 +215,7 @@ if len(session) != 0:
     SIDEBAR.markdown("<center style='font-size: 13px;'>Copyright@2022</center>", unsafe_allow_html=True)
     SIDEBAR.write('')
 
-    
+
 else:
     # Display this if there is no data found .......
     SIDEBAR.write("Data is missing from this session")

@@ -1,18 +1,19 @@
 # Bless The Lord --- God ---
 
 # import libraries ------------------------------------
-from cmath import nan
-import streamlit as st
-import pandas as pd
+from typing import Any
+
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
+import streamlit as st
 
 # Set the page main title
 st.set_page_config(
     page_title="ML | Data Cleaning",
     layout='wide'
-    
+
 )
+
 
 # Load Css file
 def load_css(path):
@@ -20,39 +21,39 @@ def load_css(path):
         st.markdown(f"<style>{file.read()}</style>", unsafe_allow_html=True)
 
 
-def outliers(data: pd.DataFrame, column: str) -> pd.DataFrame:
+def outliers(data: pd.DataFrame, column: str) -> dict[str, bool | int | Any]:
     """
     Represent outliers in data
     
     # Parameter:
 
-        data: (pd.Series) Data to check for outliner.
+        data: (pd.Series) Data to check for outlier.
         column: (str) Column name.
     
     # Return:
 
-        A DataFrame with outliner
+        A DataFrame with outlier
     """
 
     q1 = np.percentile(data[column], 25)
     q3 = np.percentile(data[column], 75)
 
-    # Calculate the interquartile range
-    interquartile_range = q3 - q1
+    # Calculate the  range
+    inter_quartile_range = q3 - q1
 
     # Initialize the lower threshold.
-    lower_threshold = q1 - 1.5 * interquartile_range
+    lower_threshold = q1 - 1.5 * inter_quartile_range
 
     # Initialize the upper threshold.
-    upper_threshold = q3 + 1.5 * interquartile_range
+    upper_threshold = q3 + 1.5 * inter_quartile_range
 
-    # FIlter out outlinear values.
+    # Filter out outlier values.
     filter_outlier_values = (data[column] < lower_threshold) | (data[column] > upper_threshold)
     filter_out_outlier = np.logical_not(filter_outlier_values)
     return {"no_outliers": filter_out_outlier, "outliers": filter_outlier_values}
 
 
-def outliersChecker(data: pd.DataFrame) -> pd.DataFrame:
+def outlier_checker(data: pd.DataFrame) -> pd.DataFrame:
     """
     Represents a dataframe with column name of the data
     with number of outliers
@@ -66,14 +67,14 @@ def outliersChecker(data: pd.DataFrame) -> pd.DataFrame:
     """
     # Exclude all object columns
     columns = data.select_dtypes(exclude="object").columns
-    
+
     outliers_data = [
         outliers(data, column)["outliers"].sum()
         for column in columns
     ]
 
     outliers_df = pd.DataFrame({
-        "column": columns, 
+        "column": columns,
         "num_outliers": outliers_data})
 
     return outliers_df.sort_values(by="num_outliers", ascending=False)
@@ -95,19 +96,15 @@ def drop_outliers(data: pd.DataFrame, column: str) -> pd.DataFrame:
 
     # Select value which are not outliers
     data = data[no_outliers]
-        
+
     return data
+
 
 def drop_all_outliers(data: pd.DataFrame, columns) -> pd.DataFrame:
-    for col in columns:
-        data = drop_outliers(data, col)
-        
+    for column in columns:
+        data = drop_outliers(data, column)
 
     return data
-
-
-
-
 
 
 def nan_check(data: pd.DataFrame) -> pd.DataFrame:
@@ -120,22 +117,22 @@ def nan_check(data: pd.DataFrame) -> pd.DataFrame:
 
     # Return:  
         
-        data_missing_df: Dataframe with number of missing data and precent.
+        data_missing_df: Dataframe with number of missing data and percent.
     """
-    # Get the missing values with 'isna' method.
+    # Get the missing values with 'isnan' method.
     data_missing = data.isna().sum()
 
-    # Calculate the precentage of missing values.
-    precent = np.array(list(
+    # Calculate the percentage of missing values.
+    percent = np.array(list(
         map(lambda x: str(x) + "%", list(np.round(data_missing / data.shape[0], 3) * 100))
-        ))
+    ))
 
     # Construct a missing values data frame.
     data_missing_df = pd.DataFrame({
         "Col": data.columns,
         "N_Missing_Values": data_missing,
-        "Percent": precent
-        }).reset_index(drop=True)
+        "Percent": percent
+    }).reset_index(drop=True)
 
     # Adding column type column.
     data_missing_df['col_dtype'] = [
@@ -148,7 +145,7 @@ def nan_check(data: pd.DataFrame) -> pd.DataFrame:
 
     # Set the column as index
     data_missing_df = data_missing_df.set_index("Col")
-    
+
     return data_missing_df
 
 
@@ -161,7 +158,7 @@ session = st.session_state
 # Make a page title
 st.markdown("# Data Cleaning")
 
-# Seperate into pages.
+# Separate into pages.
 SIDEBAR = st.sidebar
 SIDEBAR.markdown("# Data Cleaning")
 col3 = st.columns(2)
@@ -175,11 +172,9 @@ if "train_X" in session:
     col2.markdown("**Validation Data Sample**")
     col4.markdown("**Test Data**")
 
-
     # Instantiate the validation data.
     train_X: pd.DataFrame = session["train_X"]
     train_y: pd.Series = session["train_y"]
-
 
     # Instantiate the validation data.
     valid_X: pd.DataFrame = session["valid_X"]
@@ -191,30 +186,28 @@ if "train_X" in session:
     except KeyError:
         pass
 
-
-
     # Create options to handle missing values in the data .................
 
     # Add a subtitle in the sidebar.
     SIDEBAR.header('Options To Handle Missing Values(NaN)')
 
-    # Constructing a multiselector for columns to drop.
+    # Constructing a multi selector for columns to drop.
     drop_col = SIDEBAR.multiselect(
-        label="Select columns to drop", 
-        options=train_X.columns, 
+        label="Select columns to drop",
+        options=train_X.columns,
         help="Choose columns to drop"
-        )
-    
+    )
+
     # Drop the columns in all dataset.
     train_X = train_X.drop(drop_col, axis=1)
     valid_X = valid_X.drop(drop_col, axis=1)
 
     try:
-        # Catch the name error since test is optianal.
+        # Catch the name error since test is optional.
         test = test.drop(drop_col, axis=1)
     except NameError:
         pass
-    
+
     # Drop columns with drop percentage greater than or e
     conditional_drop = SIDEBAR.number_input(
         label='Drop with percentage',
@@ -235,8 +228,9 @@ if "train_X" in session:
         # Get the columns with missing values
         train_col = train_X_check[
             train_X_check['Percent'] >= conditional_drop
-            ]['Col']
-        
+            ].reset_index()["Col"]
+        print(train_col)
+
         drop_col_list = train_col.tolist()
 
         # Drop the columns in all dataset.
@@ -244,103 +238,100 @@ if "train_X" in session:
         valid_X = valid_X.drop(drop_col_list, axis=1)
 
         try:
-            # Catch the name error since test is optianal.
+            # Catch the name error since test is optional.
             test = test.drop(drop_col_list, axis=1)
         except NameError:
             pass
 
-
     # Make a select box to select columns to fill.
     auto_methods = [
         "None",
-        "mode to all", 
+        "mode to all",
         "mode to only categorical",
         "mode to only numerical",
-        "numerical median", 
+        "numerical median",
         "numerical mean"
-        ]
-    
+    ]
+
     auto_fill = SIDEBAR.selectbox(
         label='Auto fill all',
         options=auto_methods,
         help="Auto fill all categorical or numerical column"
     )
 
-
     # Make a select box to select columns to fill.
     col_to_fill = SIDEBAR.multiselect(
-        label="Select columns to fill", 
+        label="Select columns to fill",
         options=train_X.columns,
         help="while selecting make sure to select the option to use to fill your selected column."
-        )
+    )
 
     methods = [0, 'mean', 'median', 'mode', 'unknown'] * len(train_X.columns)
 
     # A Select box to be used to fill missing values in the column.
     fill_options = SIDEBAR.multiselect(
-        label="Options to be used to fill", 
-        options= methods,
+        label="Options to be used to fill",
+        options=methods,
         help="After selecting the column, choose the option to use to fill your column."
-        )
+    )
 
     SIDEBAR.write('---')
 
     # Add a subtitle in the sidebar.
     SIDEBAR.header('Handle Duplicates In Data')
 
-    # Row to keep ducing check for duplicate.
+    # Row to keep during check for duplicate.
     keep = SIDEBAR.selectbox(
-        label="Keep", 
+        label="Keep",
         options=["last", False, True],
         help="first : Drop duplicates except for the first occurrence.\
             last : Drop duplicates except for the last occurrence.\
             False : Drop all duplicates. inplace : bool, default False Whether \
             to drop duplicates in place or to return a copy. ignore_index : bool,"
-        )
+    )
 
     # Subset for check or drop duplicate.
     subset_columns = list(train_X.columns)
     subset_columns.insert(0, None)
     subset = SIDEBAR.selectbox(
-        label="Subset", 
+        label="Subset",
         options=subset_columns,
         help="column label or sequence of labels, optional\
             Only consider certain columns for identifying duplicates,\
             by default use all of the columns."
-        )
-
+    )
 
     # Drop duplicate
     drop_duplicate = SIDEBAR.selectbox(
-        label="Drop Duplicates", 
-        options=[False, True], 
+        label="Drop Duplicates",
+        options=[False, True],
         help="True: drop all duplicates. False: Don't drop duplicates."
-        )
+    )
 
     # ** Dealing with outliers **
     SIDEBAR.write("-----")
 
-    # Select the data frame to handlw for outliers
-    SIDEBAR.write("Dataset To Drop Outliers") 
+    # Select the data frame to handle for outliers
+    SIDEBAR.write("## **Drop Outliers**")
 
     # Get only the numeric data
     numeric_df = train_X.select_dtypes(exclude='object')
 
     # Select numeric columns
     train_numeric_selection = SIDEBAR.multiselect(
-                label="Select Column To Drop Outliers In Train Data",
-                options=numeric_df.columns,
-                help="""Drop outlier values in the selected column, 
+        label="Select Column To Drop Outliers In Train Data",
+        options=numeric_df.columns,
+        help="""Drop outlier values in the selected column, 
                 Note: That dropping value will lead to loss of data"""
-            )
+    )
     # Drop outliers values
     train_X = drop_all_outliers(train_X, train_numeric_selection)
 
     # Select numeric columns
     valid_numeric_selection = SIDEBAR.multiselect(
-                label="Select Column To Drop Outliers In Validation Data",
-                options=numeric_df.columns,
-                help="""Drop outlier values in the selected column, 
+        label="Select Column To Drop Outliers In Validation Data",
+        options=numeric_df.columns,
+        help="""Drop outlier values in the selected column, 
                 Note: That dropping value will lead to loss of data"""
     )
     # Drop outliers values
@@ -349,16 +340,13 @@ if "train_X" in session:
     if 'test' in session:
         # Select numeric columns
         test_numeric_selection = SIDEBAR.multiselect(
-                    label="Select Column To Drop Outliers In Test Data",
-                    options=numeric_df.columns,
-                    help="""Drop outlier values in the selected column, 
+            label="Select Column To Drop Outliers In Test Data",
+            options=numeric_df.columns,
+            help="""Drop outlier values in the selected column, 
                     Note: That dropping value will lead to loss of data"""
-                )
+        )
         # Drop outliers values
         test = drop_all_outliers(test, test_numeric_selection)
-    
-    
-
 
     # Loop over a zip of col_to_fill with fill_options
     for col, fill in zip(col_to_fill, fill_options):
@@ -367,17 +355,17 @@ if "train_X" in session:
             valid_X = valid_X.fillna({col: fill})
 
             try:
-                # Catch the name error since test is optianal.
+                # Catch the name error since test is optional.
                 test = test.fillna({col: fill})
             except NameError:
                 pass
-        
+
         elif fill == 'mean':
             train_X = train_X.fillna({col: train_X[col].mean()})
             valid_X = valid_X.fillna({col: valid_X[col].mean()})
 
             try:
-                # Catch the name error since test is optianal.
+                # Catch the name error since test is optional.
                 test = test.fillna({col: test[col].mean()})
             except NameError:
                 pass
@@ -387,7 +375,7 @@ if "train_X" in session:
             valid_X = valid_X.fillna({col: valid_X[col].median()})
 
             try:
-                # Catch the name error since test is optianal.
+                # Catch the name error since test is optional.
                 test = test.fillna({col: test[col].median()})
             except NameError:
                 pass
@@ -397,19 +385,18 @@ if "train_X" in session:
             valid_X = valid_X.fillna({col: valid_X[col].mode()[0]})
 
             try:
-                # Catch the name error since test is optianal.
+                # Catch the name error since test is optional.
                 test = test.fillna({col: test[col].mode()[0]})
             except NameError:
                 pass
 
-    
     for col in train_X.columns:
         if auto_fill == "mode to all":
             train_X = train_X.fillna({col: train_X[col].mode()[0]})
             valid_X = valid_X.fillna({col: valid_X[col].mode()[0]})
 
             try:
-                # Catch the name error since test is optianal.
+                # Catch the name error since test is optional.
                 test = test.fillna({col: test[col].mode()[0]})
             except NameError:
                 pass
@@ -422,45 +409,44 @@ if "train_X" in session:
                 valid_X = valid_X.fillna({col: valid_X[col].mode()[0]})
 
                 try:
-                    # Catch the name error since test is optianal.
+                    # Catch the name error since test is optional.
                     test = test.fillna({col: test[col].mode()[0]})
                 except NameError:
                     pass
-            
+
         if auto_fill == "numerical median":
             if str(train_X[col].dtypes).startswith('int') or str(train_X[col].dtype).startswith('float'):
                 train_X = train_X.fillna({col: train_X[col].median()})
                 valid_X = valid_X.fillna({col: valid_X[col].median()})
 
                 try:
-                    # Catch the name error since test is optianal.
+                    # Catch the name error since test is optional.
                     test = test.fillna({col: test[col].median()})
                 except NameError:
                     pass
-        
-        if  auto_fill == "numerical mean":
+
+        if auto_fill == "numerical mean":
             if str(train_X[col].dtypes).startswith('int') or str(train_X[col].dtype).startswith('float'):
                 train_X = train_X.fillna({col: train_X[col].mean()})
                 valid_X = valid_X.fillna({col: valid_X[col].mean()})
 
                 try:
-                    # Catch the name error since test is optianal.
+                    # Catch the name error since test is optional.
                     test = test.fillna({col: test[col].mean()})
                 except NameError:
                     pass
-        
+
         if auto_fill == "mode to only numerical":
             if str(train_X[col].dtypes).startswith('int') or str(train_X[col].dtype).startswith('float'):
                 train_X = train_X.fillna({col: train_X[col].mode()[0]})
                 valid_X = valid_X.fillna({col: valid_X[col].mode()[0]})
 
                 try:
-                    # Catch the name error since test is optianal.
+                    # Catch the name error since test is optional.
                     test = test.fillna({col: test[col].mode()[0]})
                 except NameError:
                     pass
 
-        
     # Create bar chart from showing the number missing values in each column .........
     col1.bar_chart(train_X.isna().sum())
     col2.bar_chart(valid_X.isna().sum())
@@ -477,15 +463,14 @@ if "train_X" in session:
             try:
                 test = test.drop_duplicates(subset=[subset])
             except NameError:
-                    pass
+                pass
         else:
             train_X = train_X.drop_duplicates(keep=keep)
             valid_X = valid_X.drop_duplicates(keep=keep)
             try:
                 test = test.drop_duplicates(keep=keep)
             except NameError:
-                    pass
-
+                pass
 
     # Display dataframes .......................
     with col1.expander("Train Data"):
@@ -512,14 +497,13 @@ if "train_X" in session:
         else:
             st.write(f"Number of duplicates in rows:  {train_X.duplicated(keep=keep).sum()}")
 
-        # **** Handling outlies ***
+        # **** Handling outliers ***
         st.write("## **Outliers In The Dataset**")
         st.write("Columns containing outlier values in train data")
 
         # Check for outliers
-        checker = outliersChecker(train_X)
+        checker = outlier_checker(train_X)
         st.write(checker)
-
 
         # Add a dataframe for inspection
         st.write('---')
@@ -533,7 +517,7 @@ if "train_X" in session:
         rows: {}
         columns: {}
         """.format(train_shape[0], train_shape[1])
-        )
+                )
 
     with col2.expander("Validation Data"):
 
@@ -560,12 +544,12 @@ if "train_X" in session:
         else:
             st.write(f"Number of duplicates in row:  {valid_X.duplicated(keep=keep).sum()}")
 
-        # **** Handling outlies ***
+        # **** Handling outliers ***
         st.write("## **Outliers In The Dataset**")
         st.write("Columns containing outlier values in validation data")
 
         # Check for outliers
-        checker = outliersChecker(valid_X)
+        checker = outlier_checker(valid_X)
         st.write(checker)
 
         # Add a dataframe for inspection
@@ -580,7 +564,7 @@ if "train_X" in session:
         rows: {}
         columns: {}
         """.format(valid_shape[0], valid_shape[1])
-        )
+                )
 
     if "test" in session:
         with col4.expander("Test Data"):
@@ -605,12 +589,12 @@ if "train_X" in session:
             else:
                 st.write(f"Number of duplicates in row:  {test.duplicated(keep=keep).sum()}")
 
-            # **** Handling outlies ***
+            # **** Handling outliers ***
             st.write("## **Outliers In The Dataset**")
             st.write("Columns containing outlier values in test data")
 
             # Check for outliers
-            checker = outliersChecker(test)
+            checker = outlier_checker(test)
             st.write(checker)
 
             # Add a dataframe for inspection
@@ -625,11 +609,11 @@ if "train_X" in session:
             rows: {}
             columns: {}
             """.format(test_shape[0], test_shape[1])
-            )
+                    )
 
             # Add datasets to the session
             st.session_state['test'] = test
-    
+
     # Add datasets to the session
     st.session_state['train_X'] = train_X
     st.session_state['valid_X'] = valid_X
@@ -648,6 +632,3 @@ else:
 
 st.markdown("<h1 style='font-size: 15px;'><center>Machine Learning</center></h1>", unsafe_allow_html=True)
 st.markdown("<center style='font-size: 13px;'>Copyright@2022</center>", unsafe_allow_html=True)
-
-
-
