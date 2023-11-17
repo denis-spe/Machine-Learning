@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from app_dataclass import Dataclass
 from sklearn.model_selection import train_test_split
 
 # Set the page main title
@@ -18,7 +19,56 @@ load_css("style.css")
 
 # Page title and sidebar title.
 st.markdown("# Data Split")
-st.sidebar.markdown("# Data Cleaning")
+st.sidebar.markdown("# Data Spliting")
+
+# Side bar
+SIDERBAR = st.sidebar
+
+
+def split_data(
+        data, 
+        target_name,
+        train_rows,
+        valid_rows,
+        random_state,
+        shuffle,
+        stratify
+        ):
+    X = data.drop(target_name, axis=1)
+    y = data[target_name]
+    train_X, valid_X, train_y,  valid_y = train_test_split(
+        X, 
+        y, 
+        train_size=train_rows, 
+        test_size=valid_rows, 
+        random_state=random_state,
+        shuffle=shuffle,
+        stratify=data[stratify]
+        )
+
+    # Add datasets to the session
+    Dataclass.SESSION['train_X'] = train_X
+    Dataclass.SESSION['valid_X'] = valid_X
+    Dataclass.SESSION['train_y'] = train_y
+    Dataclass.SESSION['valid_y'] = valid_y
+
+    # Add the name of the target variable
+    Dataclass.SESSION['target_name'] = target_name
+
+# Names of the datasets
+data_names = list(Dataclass.SESSION.to_dict().keys())
+
+# Filter out the train from the list
+data_name = list(filter(
+    lambda x: x 
+        if 'train' in x.lower() 
+        else 0
+    , data_names
+    )
+)[0]
+
+datasets = Dataclass.SESSION[data_name]
+
 
 for data_name in st.session_state:
     if 'train' in data_name and data_name not in ["train_X", "train_y"]:
@@ -78,7 +128,7 @@ for data_name in st.session_state:
 
             st.info(f"""
             Train_X:\n
-    
+
             \tRows: {train_X.shape[0]}\n
             \tColumns:{train_X.shape[1]}\n
             Valid_X:\n
@@ -91,9 +141,9 @@ for data_name in st.session_state:
             stratify: {stratify}\n
             Shuffle: {shuffle}\n
             """)
-        
-        st.sidebar.markdown("<h1 style='font-size: 15px;'><center>Machine Learning</center></h1>", unsafe_allow_html=True)
-        st.sidebar.markdown("<center style='font-size: 13px;'>Copyright@2022</center>", unsafe_allow_html=True)
+
+            st.sidebar.markdown("<h1 style='font-size: 15px;'><center>Machine Learning</center></h1>", unsafe_allow_html=True)
+            st.sidebar.markdown("<center style='font-size: 13px;'>Copyright@2022</center>", unsafe_allow_html=True)
 
 if 'train' not in st.session_state:
     st.markdown("""

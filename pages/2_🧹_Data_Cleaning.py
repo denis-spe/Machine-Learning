@@ -229,7 +229,6 @@ if "train_X" in session:
         train_col = train_X_check[
             train_X_check['Percent'] >= conditional_drop
             ].reset_index()["Col"]
-        print(train_col)
 
         drop_col_list = train_col.tolist()
 

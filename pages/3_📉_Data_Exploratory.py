@@ -162,7 +162,7 @@ if len(session) != 0:
     # Relative .......
     with relative:
         if data_copy[relative_map_color].nunique() < 16:
-            data_copy[relative_map_color] = data_copy[relative_map_color].astype("str")
+            data_copy[relative_map_color] = data_copy[relative_map_color].astype(str)
 
         numeric_col = [
             col
@@ -171,7 +171,7 @@ if len(session) != 0:
         ]
 
         if relative_chart == "scatter matrix" and len(numeric_col) <= 10:
-            with st.progress(value=1.0, text="Loading wait plesse"):
+            with st.progress(value=1.0, text="Loading wait please"):
                 scatter_mat = alt.Chart(data_copy[numeric_col]).mark_circle().encode(
                     alt.X(alt.repeat("column"), type='quantitative'),
                     alt.Y(alt.repeat("row"), type='quantitative'),
