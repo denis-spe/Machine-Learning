@@ -3,12 +3,12 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 import altair as alt
-from charts import plots
+from helper.charts import plots
 from typing import Dict
 from matplotlib.style import use
+from helper.load_css import load_css
 import time
-
-from data_handling.data_type import separate_columns_by_threshold
+from helper.data_type import separate_columns_by_threshold
 
 use('ggplot')
 
@@ -18,24 +18,17 @@ st.set_page_config(
 )
 
 
-# Load Css file ...........
-def load_css(path):
-    with open(path, mode='r') as file:
-        st.markdown(f"<style>{file.read()}</style>", unsafe_allow_html=True)
-
-
-def combine_data(sess: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+def combine_data(session: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     # Get the target name
-    _target_name = str(sess["target_name"])
-    print(sess["train_X"])
+    _target_name = str(session["target_name"])
 
     # Combine train data with its target
-    train: pd.DataFrame = sess["train_X"]
-    train[_target_name] = sess["train_y"]
+    train: pd.DataFrame = session["train_X"]
+    train[_target_name] = session["train_y"]
 
     # Combine validation data with its target
-    valid: pd.DataFrame = sess["valid_X"]
-    valid[_target_name] = sess["valid_y"]
+    valid: pd.DataFrame = session["valid_X"]
+    valid[_target_name] = session["valid_y"]
 
     train = pd.concat([train, valid])
 
@@ -43,7 +36,7 @@ def combine_data(sess: Dict[str, pd.DataFrame]) -> pd.DataFrame:
 
 
 # loading the css file .............
-load_css("style.css")
+load_css("resources/styles/style.css")
 
 # Initialize the session ..............
 session = st.session_state
@@ -220,7 +213,7 @@ else:
     # Display this if there is no data found .......
     SIDEBAR.write("Data is missing from this session")
     st.write('**Insert Data First, To Explorer Yo\' Data**')
-    st.image('visual_img.png', caption='No Data Was Found', width=300)
+    st.image('resources/images/visual_img.png', caption='No Data Was Found', width=300)
 
 st.markdown("<h1 style='font-size: 15px;'><center>Machine Learning</center></h1>", unsafe_allow_html=True)
 st.markdown("<center style='font-size: 13px;'>Copyright@2022</center>", unsafe_allow_html=True)

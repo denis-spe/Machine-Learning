@@ -1,155 +1,87 @@
 import streamlit as st
-import pandas as pd
-from app_dataclass import Dataclass
-from sklearn.model_selection import train_test_split
+from helper.dataclass import Dataclass
+from helper.split_data import split_data
+from helper.load_css import load_css
 
 # Set the page main title
 st.set_page_config(
-    page_title="ML | Data Spliting",
+    page_title="ML | Data Splitting",
 )
 
-# Load Css file
-def load_css(path):
-    with open(path, mode='r') as file:
-        st.markdown(f"<style>{file.read()}</style>", unsafe_allow_html=True)
-
-
 # loading the css file 
-load_css("style.css")
+load_css("resources/styles/style.css")
 
 # Page title and sidebar title.
 st.markdown("# Data Split")
-st.sidebar.markdown("# Data Spliting")
+st.sidebar.markdown("# Data Splitting")
 
 # Side bar
 SIDERBAR = st.sidebar
 
 
-def split_data(
-        data, 
-        target_name,
-        train_rows,
-        valid_rows,
-        random_state,
-        shuffle,
-        stratify
-        ):
-    X = data.drop(target_name, axis=1)
-    y = data[target_name]
-    train_X, valid_X, train_y,  valid_y = train_test_split(
-        X, 
-        y, 
-        train_size=train_rows, 
-        test_size=valid_rows, 
-        random_state=random_state,
-        shuffle=shuffle,
-        stratify=data[stratify]
-        )
+if len(Dataclass.SESSION) > 0:
+    # Names of the datasets
+    data_names = list(Dataclass.SESSION.to_dict().keys())
 
-    # Add datasets to the session
-    Dataclass.SESSION['train_X'] = train_X
-    Dataclass.SESSION['valid_X'] = valid_X
-    Dataclass.SESSION['train_y'] = train_y
-    Dataclass.SESSION['valid_y'] = valid_y
+    selected_data_name = st.selectbox("Select the dataset", options=data_names, index=0)
 
-    # Add the name of the target variable
-    Dataclass.SESSION['target_name'] = target_name
+    datasets = Dataclass.SESSION[selected_data_name]
 
-# Names of the datasets
-data_names = list(Dataclass.SESSION.to_dict().keys())
+    # Insert the target feature
+    target = st.selectbox("Target variable", options=datasets.columns, help="response variable")
 
-# Filter out the train from the list
-data_name = list(filter(
-    lambda x: x 
-        if 'train' in x.lower() 
-        else 0
-    , data_names
-    )
-)[0]
+    # Create the input box
+    train_rows = st.number_input("Train split samples(Rows)", min_value=0.0, max_value=1.0, value=.75, help="train size")
+    valid_rows = st.number_input("Validation split samples(Rows)", min_value=0.0, max_value=1.0, value=.25, help="test size")
+    random_state = st.number_input("Random state", value=0, help="number of seeds")
 
-datasets = Dataclass.SESSION[data_name]
+    # Add select box to sidebar
+    stratify = st.sidebar.selectbox("Stratify", options=datasets.columns.insert(0, None), help="label")
+
+    # Add a line break
+    st.sidebar.write("---")
+
+    # Add a shuffle select box
+    shuffle = st.sidebar.selectbox("Shuffle", options=[True, False], help="Shuffle data")
 
 
-for data_name in st.session_state:
-    if 'train' in data_name and data_name not in ["train_X", "train_y"]:
-        # Get the train dataset
-        datasets = st.session_state[data_name]
+    if st.button("Split"):
 
-        st.markdown(f"<h3 class='sub-title'>{data_name.capitalize()}</h3>", unsafe_allow_html=True)
+        train_X, train_y, valid_X, valid_y = split_data(
+                datasets, 
+                target, 
+                train_rows, 
+                valid_rows, 
+                random_state,
+                shuffle,
+                stratify
+            )
+        
 
-        # Insert the target feature
-        target = st.selectbox("Target variable", options=datasets.columns, help="response variable")
+        st.info(f"""
+        Train_X:\n
 
-        # Create the input box
-        train_rows = st.number_input("Train split samples(Rows)", min_value=0.0, max_value=1.0, value=.75, help="train size")
-        valid_rows = st.number_input("Validation split samples(Rows)", min_value=0.0, max_value=1.0, value=.25, help="test size")
-        random_state = st.number_input("Random state", value=0, help="number of seeds")
+        \tRows: {train_X.shape[0]}\n
+        \tColumns:{train_X.shape[1]}\n
+        Valid_X:\n
+        \tRows: {valid_X.shape[0]}\n
+        \tColumns:{valid_X.shape[1]}\n
+        Train_y:\n
+        \tRows: {train_y.shape[0]}\n
+        valid_y:\n
+        \tRows: {valid_y.shape[0]}\n
+        stratify: {stratify}\n
+        Shuffle: {shuffle}\n
+        """)
 
-        # Add select box to sidebar
-        stratify = st.sidebar.selectbox("Stratify", options=datasets.columns.insert(0, None), help="label")
+    if st.button("Data Cleaning"):
+        st.switch_page("pages/2_🧹_Data_Cleaning.py")
 
-        # Add a line break
-        st.sidebar.write("---")
 
-        # Add a shuffle select box
-        shuffle = st.sidebar.selectbox("Shuffle", options=[True, False], help="Shuffle data")
-
-        if st.button("Split"):
-            X = datasets.drop(target, axis=1)
-            y = datasets[target]
-            try:
-                train_X, valid_X, train_y,  valid_y = train_test_split(
-                    X, 
-                    y, 
-                    train_size=train_rows, 
-                    test_size=valid_rows, 
-                    random_state=random_state,
-                    shuffle=shuffle,
-                    stratify=datasets[stratify]
-                    )
-            except (KeyError, ValueError):
-                train_X, valid_X, train_y,  valid_y = train_test_split(
-                    X, 
-                    y, 
-                    train_size=train_rows, 
-                    test_size=valid_rows, 
-                    random_state=random_state,
-                    shuffle=shuffle
-                    )
-
-            # Add datasets to the session
-            st.session_state['train_X'] = train_X
-            st.session_state['valid_X'] = valid_X
-            st.session_state['train_y'] = train_y
-            st.session_state['valid_y'] = valid_y
-
-            # Add the name of the target variable
-            st.session_state['target_name'] = target
-
-            st.info(f"""
-            Train_X:\n
-
-            \tRows: {train_X.shape[0]}\n
-            \tColumns:{train_X.shape[1]}\n
-            Valid_X:\n
-            \tRows: {valid_X.shape[0]}\n
-            \tColumns:{valid_X.shape[1]}\n
-            Train_y:\n
-            \tRows: {train_y.shape[0]}\n
-            valid_y:\n
-            \tRows: {valid_y.shape[0]}\n
-            stratify: {stratify}\n
-            Shuffle: {shuffle}\n
-            """)
-
-            st.sidebar.markdown("<h1 style='font-size: 15px;'><center>Machine Learning</center></h1>", unsafe_allow_html=True)
-            st.sidebar.markdown("<center style='font-size: 13px;'>Copyright@2022</center>", unsafe_allow_html=True)
-
-if 'train' not in st.session_state:
-    st.markdown("""
-    <p>Please add train file in order to split the data.</p>
-    <p>The inserted train file must be named <b><i>train.csv.</i></b></p>
-    """, unsafe_allow_html=True)
+        st.sidebar.markdown("<h1 style='font-size: 15px;'><center>Machine Learning</center></h1>", unsafe_allow_html=True)
+        st.sidebar.markdown("<center style='font-size: 13px;'>Copyright@2022</center>", unsafe_allow_html=True)
+else:
+    st.image("resource/images/clean_up.png")
 
 st.markdown("<h1 style='font-size: 15px;'><center>Machine Learning</center></h1>", unsafe_allow_html=True)
 st.markdown("<center style='font-size: 13px;'>Copyright@2022</center>", unsafe_allow_html=True)

@@ -6,6 +6,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import streamlit as st
+from helper.load_css import load_css
+from helper.stat import nan_check, drop_all_outliers, outlier_checker
 
 # Set the page main title
 st.set_page_config(
@@ -14,143 +16,8 @@ st.set_page_config(
 
 )
 
-
-# Load Css file
-def load_css(path):
-    with open(path, mode='r') as file:
-        st.markdown(f"<style>{file.read()}</style>", unsafe_allow_html=True)
-
-
-def outliers(data: pd.DataFrame, column: str) -> dict[str, bool | int | Any]:
-    """
-    Represent outliers in data
-    
-    # Parameter:
-
-        data: (pd.Series) Data to check for outlier.
-        column: (str) Column name.
-    
-    # Return:
-
-        A DataFrame with outlier
-    """
-
-    q1 = np.percentile(data[column], 25)
-    q3 = np.percentile(data[column], 75)
-
-    # Calculate the  range
-    inter_quartile_range = q3 - q1
-
-    # Initialize the lower threshold.
-    lower_threshold = q1 - 1.5 * inter_quartile_range
-
-    # Initialize the upper threshold.
-    upper_threshold = q3 + 1.5 * inter_quartile_range
-
-    # Filter out outlier values.
-    filter_outlier_values = (data[column] < lower_threshold) | (data[column] > upper_threshold)
-    filter_out_outlier = np.logical_not(filter_outlier_values)
-    return {"no_outliers": filter_out_outlier, "outliers": filter_outlier_values}
-
-
-def outlier_checker(data: pd.DataFrame) -> pd.DataFrame:
-    """
-    Represents a dataframe with column name of the data
-    with number of outliers
-    Parameter
-    ----------
-        data: pandas dataframe to check for outliers
-
-    Return
-    --------
-        Dataframe with data column name with number of outliers
-    """
-    # Exclude all object columns
-    columns = data.select_dtypes(exclude="object").columns
-
-    outliers_data = [
-        outliers(data, column)["outliers"].sum()
-        for column in columns
-    ]
-
-    outliers_df = pd.DataFrame({
-        "column": columns,
-        "num_outliers": outliers_data})
-
-    return outliers_df.sort_values(by="num_outliers", ascending=False)
-
-
-def drop_outliers(data: pd.DataFrame, column: str) -> pd.DataFrame:
-    """
-    Drops outliers in a columns if it has outliers values
-    # Parameter
-    ----------
-        data: pandas data frame to remove outlier values
-    
-    # Return
-    --------
-        A new data frame without outlier
-    """
-    # slices for values without outliers
-    no_outliers = outliers(data, column)["no_outliers"]
-
-    # Select value which are not outliers
-    data = data[no_outliers]
-
-    return data
-
-
-def drop_all_outliers(data: pd.DataFrame, columns) -> pd.DataFrame:
-    for column in columns:
-        data = drop_outliers(data, column)
-
-    return data
-
-
-def nan_check(data: pd.DataFrame) -> pd.DataFrame:
-    """
-    Check for missing values in the data frame.
-    
-    # Parameter:
-
-        data: (pd.DataFrame)  data to check for missing values.
-
-    # Return:  
-        
-        data_missing_df: Dataframe with number of missing data and percent.
-    """
-    # Get the missing values with 'isnan' method.
-    data_missing = data.isna().sum()
-
-    # Calculate the percentage of missing values.
-    percent = np.array(list(
-        map(lambda x: str(x) + "%", list(np.round(data_missing / data.shape[0], 3) * 100))
-    ))
-
-    # Construct a missing values data frame.
-    data_missing_df = pd.DataFrame({
-        "Col": data.columns,
-        "N_Missing_Values": data_missing,
-        "Percent": percent
-    }).reset_index(drop=True)
-
-    # Adding column type column.
-    data_missing_df['col_dtype'] = [
-        str(data[column].dtypes)
-        for column in data_missing_df['Col']
-    ]
-
-    # Sort the dataframe with N_Missing_Values.
-    data_missing_df = data_missing_df.sort_values(by='N_Missing_Values', ascending=False)
-
-    # Set the column as index
-    data_missing_df = data_missing_df.set_index("Col")
-
-    return data_missing_df
-
-
 # loading the css file 
-load_css("style.css")
+load_css("resources/styles/style.css")
 
 # Initialize the session
 session = st.session_state
@@ -172,7 +39,7 @@ if "train_X" in session:
     col2.markdown("**Validation Data Sample**")
     col4.markdown("**Test Data**")
 
-    # Instantiate the validation data.
+    # Instantiate the train data.
     train_X: pd.DataFrame = session["train_X"]
     train_y: pd.Series = session["train_y"]
 
@@ -180,11 +47,27 @@ if "train_X" in session:
     valid_X: pd.DataFrame = session["valid_X"]
     valid_y: pd.Series = session["valid_y"]
 
+    # Add a subtitle in the sidebar.
+    SIDEBAR.header('Set The Index column')
+
+    # Columns as list
+    column = train_X.columns.to_list()
+    column.insert(0, "None")
+    set_index_col = SIDEBAR.selectbox('Set column as index', options=column)
+
     try:
         # Instantiate the validation data.
-        test: pd.DataFrame = session["test"]
+        test: pd.DataFrame = session["test.csv"]
+
+        if set_index_col != "None":
+            test = test.set_index(set_index_col)
+
     except KeyError:
         pass
+
+    if set_index_col != "None":
+        train_X = train_X.set_index(set_index_col)
+        valid_X = valid_X.set_index(set_index_col)
 
     # Create options to handle missing values in the data .................
 
@@ -565,7 +448,7 @@ if "train_X" in session:
         """.format(valid_shape[0], valid_shape[1])
                 )
 
-    if "test" in session:
+    if "test.csv" in session:
         with col4.expander("Test Data"):
 
             st.write("## **Missing Values In Test data**")

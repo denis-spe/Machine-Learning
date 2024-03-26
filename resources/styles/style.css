@@ -1,0 +1,35 @@
+.main-title, 
+.aside-main-title, 
+.sub-title, h1{
+    color: #6c63ff;
+}
+
+.sub-title{
+    font-size: 20px;
+}
+
+main-title{
+    position: relative;
+    top: 1;
+    background-color: #6c63ff;
+}
+
+b{
+    color: #6c63ff;
+}
+
+button{
+    background-color: #dbbd49;
+}
+
+.stApp .st-emotion-cache-19rxjzo {
+    background: none;
+    border-radius: 5px;
+}
+
+.stApp .st-emotion-cache-19rxjzo:hover{
+    background: #6c63ff;
+    border-color: white;
+    color: white;
+}
+

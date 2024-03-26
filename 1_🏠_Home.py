@@ -1,8 +1,12 @@
 # Import libraries
+from types import NoneType
+from matplotlib.pylab import noncentral_f
 import streamlit as st
 import numpy as np
 import pandas as pd
-from typing import List
+from typing import List, Literal, Any, Tuple
+from helper.dataclass import Dataclass
+from helper.load_css import load_css
 
 # Set the page main title
 st.set_page_config(
@@ -20,39 +24,6 @@ st.set_page_config(
 
 st.title("Machine learning")
 st.sidebar.title("Machine learning")
-
-
-# Load Css file
-def load_css(path):
-    with open(path, mode='r') as file:
-        st.markdown(f"<style>{file.read()}</style>", unsafe_allow_html=True)
-
-
-def convert_data_type(data, dtypes: List = None):
-    _columns = data.columns
-
-    for column in _columns:
-        if dtypes:
-            for data_type in dtypes:
-                if str(data[column].dtype).startswith('int'):
-                    if data_type == 'int8':
-                        data[column] = data[column].astype("int8")
-                    if data_type == 'int16':
-                        data[column] = data[column].astype("int16")
-                    if data_type == 'int32':
-                        data[column] = data[column].astype("int32")
-                    if data_type == 'int64':
-                        data[column] = data[column].astype("int64")
-
-                if str(data[column].dtype).startswith('float'):
-                    if data_type == 'float16':
-                        data[column] = data[column].astype(np.float16)
-                    if data_type == 'float32':
-                        data[column] = data[column].astype(np.float32)
-                    if data_type == 'float64':
-                        data[column] = data[column].astype(np.float64)
-
-    return data
 
 
 def info(data):
@@ -74,7 +45,7 @@ def info(data):
 
 
 # loading the css file 
-load_css("style.css")
+load_css("resources/styles/style.css")
 
 # Setting Screen layout
 sidebar = st.sidebar
@@ -94,32 +65,12 @@ if upload_file:
         st.error('Too many file were uploaded', icon="🚨")
     else:
         try:
-
-            # csv file names
-            names = [
-                file.name
-                for file in upload_file
-            ]
-
-            # Select the file to use as train data
-            data_name = sidebar.selectbox(
-                label="Select train data", 
-                options=names,
-            )
-
-            select_data_type = sidebar.multiselect(
-                'Change numeric precision',
-                options=['int8', 'int16', 'int32', 'int64', 'float16', 'float32', 'float32', 'float64'],
-                help="Select one or two different numeric data type for the columns"
-            )
-
             # ********* Data Descriptive Analysis **********
             with col1:
-                df_1 = pd.read_csv(upload_file[names.index(data_name)])
-                # Convert the data type.
-                df_1 = convert_data_type(df_1, select_data_type)
+                file = upload_file[0]
+                df_1 = pd.read_csv(file)
 
-                data_name_1 = data_name.split('.')[0]
+                data_name_1 = file.name.split('.')[0]
 
                 st.markdown(f"<h3 class='sub-title'>{data_name_1.capitalize()}</h3>", unsafe_allow_html=True)
 
@@ -131,25 +82,21 @@ if upload_file:
 
                 # ***** show the DataFrame ******
                 with st.expander("DataFrame"):
-                    rows = list(range(10, 110, 5))
-                    rows.append('all')
+                    rows = [*[str(val) for val in range(10, 110, 5)], "all"]
                     n_row = st.selectbox(f'{data_name_1}_rows', options=rows)
                     if n_row == 'all':
                         st.write(df_1)
                     else:
-                        st.write(df_1.head(n_row))
+                        st.write(df_1.head(int(n_row if n_row is not None else 0)))
 
                     # Set column as index
                     columns = list(df_1.columns)
                     columns.insert(0, None)
-                    set_index_col = st.selectbox('Set column as index', options=columns)
-                    if set_index_col:
-                        df_1 = df_1.set_index(set_index_col)
 
                 # Add dataset to the session 
-                st.session_state["train"] = df_1
+                Dataclass.SESSION[file.name] = df_1
 
-                # Display all dataframe column names
+                # Display all data frame column names
                 with st.expander("columns"):
                     st.write(", ".join([col for col in df_1.columns]))
 
@@ -166,15 +113,12 @@ if upload_file:
                         st.write(df_1.describe(exclude=["int", "float"]))
 
             if len(upload_file) == 2:
-                test_name = list(filter(lambda x: x if data_name_1 not in x else None, names))[0]
-
-                df_2 = pd.read_csv(upload_file[names.index(test_name)])
-                # Convert the data type.
-                df_2 = convert_data_type(df_2, select_data_type)
+                file = upload_file[1]
+                df_2 = pd.read_csv(file)
 
                 with col2:
 
-                    data_name_2 = test_name.split('.')[0]
+                    data_name_2 = file.name.split('.')[0]
                     st.markdown(f"<h3 class='sub-title'>{data_name_2.capitalize()}</h3>", unsafe_allow_html=True)
 
                     # ****** Show the data shape *****
@@ -185,32 +129,20 @@ if upload_file:
 
                     # ***** show the DataFrame ******
                     with st.expander("DataFrame"):
-                        rows = list(range(10, 110, 5))
-                        rows.append('all')
+                        rows = [*[str(val) for val in range(10, 110, 5)], "all"]
                         n_row = st.selectbox(f'{data_name_2}_rows', options=rows)
                         if n_row == 'all':
                             st.write(df_2)
                         else:
-                            st.write(df_2.head(n_row))
+                            st.write(df_2.head(int(n_row if n_row is not None else 0)))
 
                         # Set column as index
-                        columns = list(df_2.columns)
+                        columns: List[str|None] = list(df_2.columns)
                         columns.insert(0, None)
 
-                        if set_index_col is not None:
-                            try:
-                                index = columns.index(set_index_col)
-                            except ValueError:
-                                index = 0
-                        else:
-                            index = 0
 
-                        set_index_col = st.selectbox('Set column as index', options=columns, index=index)
-                        if set_index_col:
-                            df_2 = df_2.set_index(set_index_col)
-
-                    # Add Dataset in the session
-                    st.session_state["test"] = df_2
+                    # # Add Dataset in the session
+                    st.session_state[file.name] = df_2
 
                     # Display all dataframe column names
                     with st.expander("columns"):
@@ -227,6 +159,10 @@ if upload_file:
                             st.write(df_2.describe())
                         if description_type == "categorical":
                             st.write(df_2.describe(exclude=["int", "float"]))
+            
+            # Switch to the data split page
+            if st.button("Data split"):
+                st.switch_page("pages/1_✃_Data_Split.py")
 
         except IndexError:
             st.error("Too many file have been insert")
@@ -239,7 +175,7 @@ else:
             
             """
     )
-    st.image("add_file_image_s4qf.svg")
+    st.image("resources/images/add_file_image_s4qf.svg")
 
     st.write("")
     st.write("")
